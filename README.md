@@ -58,7 +58,7 @@ Each problem's README contains:
 | 7 | Library Management System | Factory, Observer, Repository | 🟡 Medium |
 | 8 | BookMyShow (Movie Ticket Booking) | Strategy, Observer, Locking | 🔴 Hard |
 | 9 | Splitwise (Expense Sharing) | Strategy, Factory, Observer | 🟡 Medium |
-| 10 | LRU / LFU Cache | Strategy, Doubly Linked List + HashMap | 🟡 Medium |
+| 10 | LRU / LFU Cache |  Strategy, Doubly Linked List + HashMap | 🟡 Medium | <a href="https://sampritakoley.github.io/LLD_SYSTEM_DESIGN_SOLUTION/LRU_DESIGN_DOC/"> Solution </a>
 | 11 | Rate Limiter | Strategy (Token Bucket, Sliding Window) | 🟡 Medium |
 | 12 | Notification Service | Observer, Strategy, Factory | 🟡 Medium |
 | 13 | Logger Framework | Chain of Responsibility, Singleton | 🟡 Medium |
