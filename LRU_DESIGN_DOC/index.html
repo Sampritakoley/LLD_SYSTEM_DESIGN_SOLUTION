@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LRU Cache – Low Level Design </title>
+<style>
+  :root {
+    --bg: #f7f8fa; --panel: #ffffff; --ink: #1c2330; --muted: #5d6778;
+    --line: #dde1e8; --accent: #2457c5; --accent-soft: #e8efff; --warn: #a15c00;
+    --code: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161d; --panel: #1a202a; --ink: #e6eaf1; --muted: #98a2b3;
+      --line: #2b3441; --accent: #7aa2ff; --accent-soft: #1f2a42; --warn: #e0a85a;
+      --code: #232b38;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 820px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  h2 {
+    font-size: 1.3rem; margin: 48px 0 12px; padding-top: 20px;
+    border-top: 2px solid var(--accent); letter-spacing: -0.01em;
+  }
+  h3 { font-size: 1rem; margin: 20px 0 6px; }
+  p { margin: 8px 0; max-width: 70ch; }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin: 4px 0; max-width: 70ch; }
+  code {
+    font: 0.88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code); padding: 1px 5px; border-radius: 4px;
+  }
+  nav { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; font-size: 0.92rem; }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); font-size: 0.94rem; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { background: var(--accent-soft); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { white-space: nowrap; font-weight: 600; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 18px 14px; }
+  .box h3 { margin-top: 12px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+
+  /* architecture diagram */
+  .arch { display: grid; gap: 10px; margin: 16px 0; }
+  .layer {
+    background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 6px; padding: 10px 14px;
+  }
+  .layer b { display: block; font-size: 0.82rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--accent-soft); border-radius: 4px; padding: 2px 8px; font: 0.86rem ui-monospace, Menlo, Consolas, monospace; }
+  .down { text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+
+  .diagram { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 12px 0; }
+  .diagram svg { display: block; width: 100%; min-width: 640px; height: auto; }
+  .flow { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 18px 10px; margin: 12px 0; }
+  ol { padding-left: 20px; margin: 6px 0; }
+  ol li { margin: 3px 0; }
+  .note { border-left: 3px solid var(--warn); padding: 4px 12px; color: var(--muted); margin: 14px 0; }
+  footer { margin-top: 56px; color: var(--muted); font-size: 0.88rem; }
+  .badge {
+    display: inline-flex; align-items: flex-start; gap: 10px; max-width: 100%;
+    background: var(--accent-soft); border: 1.5px solid var(--accent); border-radius: 10px;
+    padding: 8px 12px; margin: 0 0 20px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex: none; margin-top: 2px;
+    background: var(--accent); color: var(--bg); font-weight: 700; font-size: 0.72rem;
+    display: grid; place-items: center;
+  }
+  .who { display: flex; flex-direction: column; line-height: 1.4; min-width: 0; }
+  .who strong { font-size: 0.9rem; }
+  .who a { font-size: 0.8rem; text-decoration: none; overflow-wrap: anywhere; }
+  .who a[href^="mailto"] { color: var(--muted); }
+  .who a.li { color: var(--accent); font-weight: 600; }
+  .who a:hover { text-decoration: underline; }
+  .who a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  footer p { margin: 4px 0; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="badge">
+  <span class="avatar" aria-hidden="true">SK</span>
+  <div class="who">
+    <strong>Samprita Koley</strong>
+    <a href="mailto:sampritakoley01@gmail.com">sampritakoley01@gmail.com</a>
+    <a class="li" href="https://www.linkedin.com/in/sampritakoley/" target="_blank" rel="noopener noreferrer">LinkedIn profile</a>
+  </div>
+</div>
+
+<h1>LRU Cache – Low Level Design</h1>
+<p class="sub">A thread-safe, fixed-capacity cache with a pluggable eviction policy. Java.</p>
+
+<nav>
+  <a href="#fr">Functional</a>
+  <a href="#nfr">Non-functional</a>
+  <a href="#domain">Domain</a>
+  <a href="#arch">Architecture</a>
+  <a href="#components">Components</a>
+  <a href="#flows">Flows</a>
+  <a href="#patterns">Patterns</a>
+  <a href="#tradeoffs">Trade-offs</a>
+</nav>
+
+<h2 id="fr">1. Functional requirements</h2>
+<ul>
+  <li><code>put(key, value)</code>, <code>get(key)</code> (returns <code>Optional</code>), and <code>remove(key)</code>.</li>
+  <li>The cache has a fixed capacity. When a new key pushes it over capacity, one entry is evicted.</li>
+  <li>The default rule is least recently used. Both reads and updating writes count as "use".</li>
+  <li>The eviction rule is swappable (LRU, FIFO, later LFU) without changing the cache code.</li>
+  <li>Observers can react to put, get and evict events (logging, hit-rate metrics).</li>
+  <li>A capacity of zero or less is rejected at construction.</li>
+</ul>
+
+<h2 id="nfr">2. Non-functional requirements</h2>
+<ul>
+  <li><b>Performance:</b> O(1) for get, put and remove.</li>
+  <li><b>Thread safety:</b> concurrent callers must never corrupt the data or the ordering.</li>
+  <li><b>Consistency:</b> the store and the eviction ordering must never disagree about what is cached.</li>
+  <li><b>Extensibility:</b> new eviction rules, stores and listeners are added without editing the orchestrator.</li>
+  <li><b>Resilience:</b> a slow or failing listener cannot break or block the cache.</li>
+  <li><b>Scope:</b> single JVM, in-memory, generic <code>&lt;K, V&gt;</code>, no external libraries.</li>
+</ul>
+
+<h2 id="domain">3. Domain identification</h2>
+<p>Reading the requirements as nouns and verbs gives the building blocks.</p>
+<div class="table-wrap">
+<table>
+  <tr><th>Domain concept</th><th>Becomes</th></tr>
+  <tr><td>Cache (the thing callers use)</td><td><code>Cache</code> interface and <code>LRUCache</code> orchestrator</td></tr>
+  <tr><td>Key-value data</td><td><code>CacheStore</code>: only holds data</td></tr>
+  <tr><td>Which key goes next</td><td><code>EvictionPolicy</code>: only tracks keys and order</td></tr>
+  <tr><td>Things that happened</td><td><code>CacheEventListener</code>: put, get, evict events</td></tr>
+  <tr><td>Invalid input</td><td><code>CacheException</code>, <code>InvalidCapacityException</code></td></tr>
+</table>
+</div>
+<p>The key idea is separating <b>where values live</b> from <b>which key to evict</b>. They change for different reasons, so they get different classes.</p>
+
+<h2 id="arch">4. Architecture</h2>
+<p>Dependencies point strictly downward. The orchestrator only knows interfaces, and the concrete classes are injected through the constructor.</p>
+
+<div class="arch">
+  <div class="layer"><b>Entry point</b><div class="chips"><span class="chip">Cache&lt;K,V&gt;</span></div></div>
+  <div class="down">▼</div>
+  <div class="layer"><b>Orchestrator (one lock guards every operation)</b><div class="chips"><span class="chip">LRUCache&lt;K,V&gt;</span></div></div>
+  <div class="down">▼</div>
+  <div class="row">
+    <div class="layer"><b>Strategy: what to evict</b>
+      <div class="chips"><span class="chip">EvictionPolicy&lt;K&gt;</span><span class="chip">LRUEvictionPolicy</span><span class="chip">FIFOEvictionPolicy</span></div></div>
+    <div class="layer"><b>Observer: who to tell</b>
+      <div class="chips"><span class="chip">CacheEventListener</span><span class="chip">Logging…</span><span class="chip">Metrics…</span></div></div>
+  </div>
+  <div class="down">▼</div>
+  <div class="layer"><b>Storage</b><div class="chips"><span class="chip">CacheStore&lt;K,V&gt;</span><span class="chip">InMemoryCacheStore</span></div></div>
+</div>
+
+<h3>Class diagram</h3>
+<div class="diagram">
+<svg viewBox="0 0 820 430" role="img" aria-label="Class diagram: LRUCache implements Cache and depends on CacheStore, EvictionPolicy and CacheEventListener interfaces, each with its implementations" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="real" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="var(--panel)" stroke="var(--muted)" stroke-width="1.3"/>
+    </marker>
+    <marker id="use" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+    </marker>
+  </defs>
+  <style>
+    .t { fill: var(--ink); font: 600 13px system-ui, sans-serif; text-anchor: middle; }
+    .s { fill: var(--muted); font: 11px system-ui, sans-serif; text-anchor: middle; }
+    .f { fill: var(--muted); font: 11.5px ui-monospace, Menlo, Consolas, monospace; }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.3; }
+    .ibox { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.3; }
+    .core { fill: var(--panel); stroke: var(--accent); stroke-width: 2; }
+    .impl { stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 5 4; fill: none; marker-end: url(#real); }
+    .uses { stroke: var(--accent); stroke-width: 1.5; fill: none; marker-end: url(#use); }
+    .lbl { fill: var(--accent); font: 600 11px system-ui, sans-serif; }
+  </style>
+
+  <!-- top: entry point -->
+  <rect class="ibox" x="290" y="10" width="240" height="50" rx="6"/>
+  <text class="s" x="410" y="26">&lt;&lt;interface&gt;&gt;</text>
+  <text class="t" x="410" y="46">Cache&lt;K,V&gt;</text>
+
+  <!-- orchestrator -->
+  <rect class="core" x="270" y="100" width="280" height="86" rx="6"/>
+  <text class="t" x="410" y="120">LRUCache&lt;K,V&gt;</text>
+  <line x1="270" y1="128" x2="550" y2="128" stroke="var(--line)"/>
+  <text class="f" x="282" y="146">- store: CacheStore</text>
+  <text class="f" x="282" y="160">- evictionPolicy: EvictionPolicy</text>
+  <text class="f" x="282" y="174">- listeners / lock: ReentrantLock</text>
+
+  <!-- LRUCache implements Cache -->
+  <line class="impl" x1="410" y1="100" x2="410" y2="61"/>
+
+  <!-- uses arrows -->
+  <path class="uses" d="M310 186 L110 240"/>
+  <path class="uses" d="M410 186 L410 240"/>
+  <path class="uses" d="M510 186 L715 240"/>
+  <text class="lbl" x="170" y="205">uses</text>
+  <text class="lbl" x="418" y="214">uses</text>
+  <text class="lbl" x="620" y="205">notifies</text>
+
+  <!-- interfaces row -->
+  <rect class="ibox" x="25" y="240" width="170" height="46" rx="6"/>
+  <text class="s" x="110" y="256">&lt;&lt;interface&gt;&gt;</text>
+  <text class="t" x="110" y="276">CacheStore&lt;K,V&gt;</text>
+
+  <rect class="ibox" x="320" y="240" width="180" height="46" rx="6"/>
+  <text class="s" x="410" y="256">&lt;&lt;interface&gt;&gt;</text>
+  <text class="t" x="410" y="276">EvictionPolicy&lt;K&gt;</text>
+
+  <rect class="ibox" x="625" y="240" width="180" height="46" rx="6"/>
+  <text class="s" x="715" y="256">&lt;&lt;interface&gt;&gt;</text>
+  <text class="t" x="715" y="276">CacheEventListener</text>
+
+  <!-- implementations -->
+  <rect class="box" x="15" y="350" width="190" height="44" rx="6"/>
+  <text class="t" x="110" y="370">InMemoryCacheStore</text>
+  <text class="s" x="110" y="385">HashMap</text>
+
+  <rect class="box" x="235" y="350" width="150" height="44" rx="6"/>
+  <text class="t" x="310" y="370">LRUEvictionPolicy</text>
+  <text class="s" x="310" y="385">HashMap + linked list</text>
+
+  <rect class="box" x="400" y="350" width="150" height="44" rx="6"/>
+  <text class="t" x="475" y="370">FIFOEvictionPolicy</text>
+  <text class="s" x="475" y="385">LinkedHashSet</text>
+
+  <rect class="box" x="590" y="350" width="105" height="44" rx="6"/>
+  <text class="t" x="642" y="370">Logging</text>
+  <text class="s" x="642" y="385">Listener</text>
+
+  <rect class="box" x="705" y="350" width="105" height="44" rx="6"/>
+  <text class="t" x="757" y="370">Metrics</text>
+  <text class="s" x="757" y="385">Listener</text>
+
+  <!-- implements arrows -->
+  <line class="impl" x1="110" y1="350" x2="110" y2="287"/>
+  <line class="impl" x1="310" y1="350" x2="370" y2="287"/>
+  <line class="impl" x1="475" y1="350" x2="450" y2="287"/>
+  <line class="impl" x1="642" y1="350" x2="685" y2="287"/>
+  <line class="impl" x1="757" y1="350" x2="745" y2="287"/>
+
+  <!-- legend -->
+  <line class="uses" x1="20" y1="418" x2="60" y2="418"/>
+  <text class="s" x="66" y="422" style="text-anchor:start">depends on</text>
+  <line class="impl" x1="160" y1="418" x2="200" y2="418"/>
+  <text class="s" x="206" y="422" style="text-anchor:start">implements</text>
+</svg>
+</div>
+<p>Only <code>LRUCache</code> knows the three interfaces. The concrete classes on the bottom row are chosen when the cache is constructed, so none of them is referenced inside <code>LRUCache</code>.</p>
+
+<h2 id="components">5. Component responsibilities</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Component</th><th>Responsibility</th></tr>
+  <tr><td>Cache</td><td>The public contract: get, put, remove, size, capacity.</td></tr>
+  <tr><td>LRUCache</td><td>Coordinates store, policy and listeners. Holds the lock, checks capacity, triggers eviction, fires events. Contains no ordering logic.</td></tr>
+  <tr><td>CacheStore / InMemoryCacheStore</td><td>Owns the key-value data. Knows nothing about order or eviction. <code>size()</code> is the single source of truth for the count.</td></tr>
+  <tr><td>EvictionPolicy</td><td>Contract: <code>keyAdded</code>, <code>keyAccessed</code>, <code>keyRemoved</code>, <code>evictionCandidate</code>. Sees keys only, never values.</td></tr>
+  <tr><td>LRUEvictionPolicy</td><td>HashMap plus doubly linked list. The most recent key sits at the head, the eviction candidate at the tail. All moves are O(1).</td></tr>
+  <tr><td>FIFOEvictionPolicy</td><td>Insertion order only (<code>LinkedHashSet</code>). Ignores reads. It exists to show the strategy split really works.</td></tr>
+  <tr><td>CacheEventListener</td><td>Hooks <code>onPut</code>, <code>onGet</code>, <code>onEvict</code>. Implementations: logging and atomic hit/miss/eviction counters.</td></tr>
+</table>
+</div>
+
+<h2 id="flows">6. Key flows</h2>
+<div class="two">
+  <div class="box">
+    <h3>get(key)</h3>
+    <ol>
+      <li>Lock.</li>
+      <li>Read the value from the store.</li>
+      <li>If found, call <code>policy.keyAccessed(key)</code>.</li>
+      <li>Unlock.</li>
+      <li>Notify listeners (hit or miss).</li>
+    </ol>
+  </div>
+  <div class="box">
+    <h3>put(key, value) on a full cache</h3>
+    <ol>
+      <li>Lock. Write to the store.</li>
+      <li>New key: <code>policy.keyAdded</code>. Existing key: <code>policy.keyAccessed</code>.</li>
+      <li>If <code>store.size() &gt; capacity</code>, ask the policy for a candidate.</li>
+      <li>Remove it from the <b>store first</b>, then from the policy.</li>
+      <li>Unlock. Notify put, then evict.</li>
+    </ol>
+  </div>
+</div>
+
+<h2 id="patterns">7. Design patterns used</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Pattern</th><th>Where</th><th>Why</th></tr>
+  <tr><td>Strategy</td><td><code>EvictionPolicy</code> and its implementations</td><td>Eviction rules are mutually exclusive and chosen once at construction. Adding LFU means one new class, with no change to <code>LRUCache</code>.</td></tr>
+  <tr><td>Observer</td><td><code>CacheEventListener</code></td><td>Any number of listeners can react to events without the cache knowing about them or their logic.</td></tr>
+  <tr><td>Repository</td><td><code>CacheStore</code></td><td>Isolates where data lives. An off-heap or memory-bounded store can replace the in-memory one with zero eviction changes.</td></tr>
+  <tr><td>Dependency injection</td><td>Constructor of <code>LRUCache</code></td><td>The wiring is explicit, and tests can pass in fakes.</td></tr>
+</table>
+</div>
+<h3>Considered and rejected</h3>
+<ul>
+  <li><b>Decorator:</b> it fits behaviours that stack. Only one eviction policy applies at a time, so Strategy already expresses this.</li>
+  <li><b>Singleton:</b> callers need many independent caches (per tenant, per resource type, isolated tests).</li>
+  <li><b>Facade class:</b> there is no protocol translation at the boundary, so the interface plus its implementation is enough.</li>
+</ul>
+
+<h2 id="tradeoffs">8. Trade-offs</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Decision</th><th>Gain</th><th>Cost</th></tr>
+  <tr><td>One <code>ReentrantLock</code> around each operation</td><td>Simple and correct. Keeps store and ordering atomic. <code>ConcurrentHashMap</code> alone cannot do this because the work spans two structures.</td><td>All callers serialize, even on reads, because a read also reorders. Throughput is limited under heavy contention. Sharding or striped locks would help.</td></tr>
+  <tr><td>Split store and policy</td><td>Swap either side freely. The policy is reusable for any value type.</td><td>More classes and two structures that must stay in sync.</td></tr>
+  <tr><td>Remove from store first, then policy</td><td>If removal fails, state stays consistent.</td><td>The cache can be briefly over capacity.</td></tr>
+  <tr><td>Notify listeners outside the lock</td><td>A slow or throwing listener cannot block or corrupt the cache.</td><td>Events are only eventually ordered. A listener may see an evict for a key that was already re-inserted.</td></tr>
+  <tr><td>Hand-written linked list, not <code>LinkedHashMap</code></td><td>Generalizes beyond LRU and shows how it works underneath.</td><td>More code. <code>LinkedHashMap(accessOrder=true)</code> is enough if LRU is the only policy ever needed.</td></tr>
+  <tr><td>In-memory, single JVM</td><td>Fast and simple.</td><td>No coherence across servers. Multiple nodes need Redis or consistent hashing, which is an HLD problem.</td></tr>
+</table>
+</div>
+
+<div class="note">
+  Known limitations: <code>null</code> values are not supported because a <code>null</code> from the store means a miss. The class is named <code>LRUCache</code> but accepts any policy, so a name like <code>PolicyCache</code> would be more accurate.
+</div>
+
+<footer>
+  <p>LRU Cache LLD · Java · Strategy, Observer, Repository</p>
+</footer>
+</main>
+</body>
+</html>
