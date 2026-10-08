@@ -45,32 +45,9 @@ Each problem's README contains:
 
 ---
 
-## 📚 Problems Covered
-
 | # | Problem | Key Patterns | Difficulty |
 |---|---------|--------------|:----------:|
-| 1 | Parking Lot | Strategy, Factory, Singleton | 🟢 Easy |
-| 2 | Tic-Tac-Toe | State, Strategy | 🟢 Easy |
-| 3 | Snake & Ladder | Factory, Observer | 🟢 Easy |
-| 4 | Vending Machine | State, Factory | 🟡 Medium |
-| 5 | ATM | State, Chain of Responsibility | 🟡 Medium |
-| 6 | Elevator System | State, Strategy, Observer | 🔴 Hard |
-| 7 | Library Management System | Factory, Observer, Repository | 🟡 Medium |
-| 8 | BookMyShow (Movie Ticket Booking) | Strategy, Observer, Locking | 🔴 Hard |
-| 9 | Splitwise (Expense Sharing) | Strategy, Factory, Observer | 🟡 Medium |
-| 10 | LRU / LFU Cache |  Strategy, Doubly Linked List + HashMap | 🟡 Medium | <a href="https://sampritakoley.github.io/LLD_SYSTEM_DESIGN_SOLUTION/LRU_DESIGN_DOC/"> Solution </a>
-| 11 | Rate Limiter | Strategy (Token Bucket, Sliding Window) | 🟡 Medium |
-| 12 | Notification Service | Observer, Strategy, Factory | 🟡 Medium |
-| 13 | Logger Framework | Chain of Responsibility, Singleton | 🟡 Medium |
-| 14 | Payment Gateway Abstraction | Adapter, Strategy, Factory | 🔴 Hard |
-| 15 | Ride Sharing (Uber/Ola) | Strategy, Observer, State | 🔴 Hard |
-| 16 | Food Delivery (Swiggy/Zomato) | Strategy, Observer, State | 🔴 Hard |
-| 17 | Chess Game | Strategy, Command, Factory | 🔴 Hard |
-| 18 | Hotel Booking System | Factory, Strategy, Locking | 🔴 Hard |
-| 19 | URL Shortener | Strategy, Factory | 🟡 Medium |
-| 20 | Pub-Sub / Message Queue | Observer, Producer-Consumer | 🔴 Hard |
-
-> 📌 *Add or remove rows as the repo grows. Link each problem name to its folder.*
+| 1 | [LRU / LFU Cache](https://sampritakoley.github.io/LLD_SYSTEM_DESIGN_SOLUTION/LRU_DESIGN_DOC/) | Strategy, Doubly Linked List + HashMap | 🟡 Medium |
 
 ---
 
